@@ -13,3 +13,7 @@ pub fn process(mut stream: TcpStream) {
         .build();
     stream.write_all(response.to_string().as_bytes()).unwrap();
 }
+
+mod middleware {
+
+}
