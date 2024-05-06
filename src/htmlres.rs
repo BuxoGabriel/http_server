@@ -1,3 +1,12 @@
+use askama::Template;
+
+#[derive(Template)]
+#[template(path="layout.html")]
+struct Layout {
+    title: &'static str,
+    body: &'static str
+}
+
 pub struct HtmlResponse {
     pub status_line: String,
     pub headers: Vec<(String, String)>,
@@ -5,7 +14,7 @@ pub struct HtmlResponse {
 }
 
 impl HtmlResponse {
-    pub fn build(self) -> String {
+    pub fn to_string(self) -> String {
         let mut result = self.status_line;
         result.push_str("\r\n");
         self.headers.into_iter().for_each(|(key, value)| {
@@ -21,18 +30,34 @@ impl HtmlResponse {
 }
 
 #[derive(Clone)]
+pub enum ResStatus {
+    Ok,
+    NotFound
+}
+
+impl ResStatus {
+    pub fn to_status_line(&self) -> String {
+        match self {
+            Self::Ok => "200 OK".to_string(),
+            Self::NotFound => "404 Not Found".to_string()
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct HtmlResponseBuilder {
-    status_line: Option<String>,
+    status_line: Option<ResStatus>,
     headers: Vec<(String, String)>,
     html: Option<String>
 }
 
 impl Default for HtmlResponseBuilder {
     fn default() -> Self {
+        let html = Layout { title: "My website", body: "My website"};
         HtmlResponseBuilder {
-            status_line: Some("HTTP/1.1 200 OK".to_string()),
+            status_line: Some(ResStatus::Ok),
             headers: Vec::new(),
-            html: Some("Hello World!".to_string())
+            html: Some(html.render().unwrap())
         }
     }
 }
@@ -45,7 +70,7 @@ impl HtmlResponseBuilder {
             html: None
         }
     }
-    pub fn status_line(mut self, status: String) -> Self {
+    pub fn status_line(mut self, status: ResStatus) -> Self {
         self.status_line = Some(status);
         self
     }
@@ -58,8 +83,10 @@ impl HtmlResponseBuilder {
         self
     }
     pub fn build(self) -> HtmlResponse {
+        let status = self.status_line.expect("HtmlResponse requires status").to_status_line();
+        let status = format!("HTTP/1.1 {}", status);
         HtmlResponse {
-            status_line: self.status_line.expect("HtmlResponse requires status line"),
+            status_line: status,
             headers: self.headers,
             html: self.html.unwrap_or("".to_string())
         }
