@@ -1,6 +1,7 @@
 use std::net::TcpListener;
 use clap::Parser;
-use http_server::{req_handler, worker_pool::WorkerPool};
+use http_server::req_handler::RequestHandler;
+use http_server::worker_pool::WorkerPool;
 
 /// An efficient multi-threaded web server with templating
 #[derive(Parser, Debug)]
@@ -11,7 +12,6 @@ struct Args {
     port: u16
 }
 
-#[allow(unused)]
 fn main() {
     // Get command line args
     let args = Args::parse();
@@ -26,7 +26,11 @@ fn main() {
         match stream {
             Ok(stream) => {
                 println!("Connection established!");
-                worker_pool.process(Box::new(|| req_handler::process(stream)));
+                worker_pool.process(Box::new(|| {
+                    // Create request handler to handle requests
+                    let handler = RequestHandler::default();
+                    handler.process(stream)
+                }));
             }
             Err(e) => {
                 eprintln!("Connection failed: {}", e);

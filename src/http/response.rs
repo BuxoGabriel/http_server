@@ -1,12 +1,3 @@
-use askama::Template;
-
-#[derive(Template)]
-#[template(path="layout.html")]
-struct Layout {
-    title: &'static str,
-    body: &'static str
-}
-
 pub struct HttpResponse {
     pub status_line: String,
     pub headers: Vec<(String, String)>,
@@ -46,18 +37,17 @@ impl ResStatus {
 
 #[derive(Clone)]
 pub struct HttpResponseBuilder {
-    status_line: Option<ResStatus>,
+    status: Option<ResStatus>,
     headers: Vec<(String, String)>,
     html: Option<String>
 }
 
 impl Default for HttpResponseBuilder {
     fn default() -> Self {
-        let html = Layout { title: "My website", body: "My website"};
         HttpResponseBuilder {
-            status_line: Some(ResStatus::Ok),
+            status: Some(ResStatus::Ok),
             headers: Vec::new(),
-            html: Some(html.render().unwrap())
+            html: None
         }
     }
 }
@@ -65,17 +55,17 @@ impl Default for HttpResponseBuilder {
 impl HttpResponseBuilder {
     pub fn new() -> Self {
         HttpResponseBuilder {
-            status_line: None,
+            status: None,
             headers: Vec::new(),
             html: None
         }
     }
-    pub fn status_line(mut self, status: ResStatus) -> Self {
-        self.status_line = Some(status);
+    pub fn status(mut self, status: ResStatus) -> Self {
+        self.status = Some(status);
         self
     }
-    pub fn header(mut self, header: (String, String)) -> Self {
-        self.headers.push(header);
+    pub fn header(mut self, key: String, value: String) -> Self {
+        self.headers.push((key, value));
         self
     }
     pub fn html(mut self, html: String) -> Self {
@@ -83,7 +73,7 @@ impl HttpResponseBuilder {
         self
     }
     pub fn build(self) -> HttpResponse {
-        let status = self.status_line.expect("HTTP Response requires status").to_status_line();
+        let status = self.status.expect("HTTP Response requires status").to_status_line();
         let status = format!("HTTP/1.1 {}", status);
         HttpResponse {
             status_line: status,
