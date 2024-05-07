@@ -3,6 +3,7 @@ use std::net::TcpStream;
 use askama::Template;
 
 use crate::html::PageLayout;
+use crate::http::request::Method;
 use crate::http::response::ResStatus;
 use crate::http::{request::HttpRequest, response::HttpResponseBuilder};
 
@@ -50,17 +51,21 @@ impl RequestHandler {
 pub trait Middleware {
     fn process(&self, req: &HttpRequest, res: HttpResponseBuilder) -> HttpResponseBuilder;
 }
-
+// Router that can add endpoints and sub routes
 pub struct Router {
-    routes: HashMap<String, Box<dyn Middleware>>
+    routes: HashMap<String, HashMap<Method, Box<dyn Middleware>>>
 }
 impl Middleware for Router {
     fn process(&self, req: &HttpRequest, res: HttpResponseBuilder) -> HttpResponseBuilder {
-        if let Some(middleware) = self.routes.get(&req.route) {
-            middleware.process(req, res)
-        } else {
-            res.status(ResStatus::NotFound)
+        let method_switch = self.routes.get(&req.route);
+        if let None = method_switch {
+            return res.status(ResStatus::NotFound)
         }
+        let middleware = method_switch.unwrap().get(&req.method);
+        if let None = middleware{
+            return res.status(ResStatus::NotFound)
+        }
+        middleware.unwrap().process(req, res)
     }
 }
 impl Default for Router {
@@ -69,7 +74,7 @@ impl Default for Router {
             title: "Hello World",
             body: "Hello World"
         };
-        Self::new().add_body("/".into(), hello_world.render().unwrap())
+        Self::new().add_endpoint("/".into(), Method::GET, hello_world.render().unwrap())
     }
 }
 impl Router {
@@ -78,27 +83,40 @@ impl Router {
             routes: HashMap::new()
         }
     }
-    pub fn add_body(mut self, route: String, html: String) -> Self {
-        self.routes.insert(route, Box::from(Body::with_content(html)));
-        self
+    pub fn add(mut self, route: String, method: Method, middleware: Box<dyn Middleware>) -> Self {
+        match self.routes.get_mut(&route) {
+            Some(method_switch) => {
+                method_switch.insert(method, middleware);
+                self
+            }
+            None => {
+                let mut method_switch: HashMap<Method, Box<dyn Middleware>> = HashMap::new();
+                method_switch.insert(method, middleware);
+                self.routes.insert(route, method_switch);
+                self
+            }
+        }
     }
-    pub fn add_router(mut self, route: String, router: Router) -> Self {
-        self.routes.insert(route, Box::from(router));
-        self
+    pub fn add_endpoint(self, route: String, method: Method, body: String) -> Self {
+        let endpoint = Box::from(Endpoint::with_content(body));
+        self.add(route, method, endpoint)
+    }
+    pub fn add_router(self, route: String, method: Method, router: Router) -> Self {
+        self.add(route, method, Box::from(router))
     }
 }
 
-pub struct Body {
+pub struct Endpoint {
     content: String
 }
-impl Middleware for Body {
+impl Middleware for Endpoint {
     fn process(&self, _req: &HttpRequest, res: HttpResponseBuilder) -> HttpResponseBuilder {
         res.status(ResStatus::Ok)
             .header("Content-Length".into(), self.content.len().to_string())
             .html(self.content.clone())
     }
 }
-impl Body {
+impl Endpoint {
     pub fn with_content(content: String) -> Self {
         Self { content }
     }
