@@ -7,13 +7,13 @@ struct Layout {
     body: &'static str
 }
 
-pub struct HtmlResponse {
+pub struct HttpResponse {
     pub status_line: String,
     pub headers: Vec<(String, String)>,
     pub html: String
 }
 
-impl HtmlResponse {
+impl HttpResponse {
     pub fn to_string(self) -> String {
         let mut result = self.status_line;
         result.push_str("\r\n");
@@ -45,16 +45,16 @@ impl ResStatus {
 }
 
 #[derive(Clone)]
-pub struct HtmlResponseBuilder {
+pub struct HttpResponseBuilder {
     status_line: Option<ResStatus>,
     headers: Vec<(String, String)>,
     html: Option<String>
 }
 
-impl Default for HtmlResponseBuilder {
+impl Default for HttpResponseBuilder {
     fn default() -> Self {
         let html = Layout { title: "My website", body: "My website"};
-        HtmlResponseBuilder {
+        HttpResponseBuilder {
             status_line: Some(ResStatus::Ok),
             headers: Vec::new(),
             html: Some(html.render().unwrap())
@@ -62,9 +62,9 @@ impl Default for HtmlResponseBuilder {
     }
 }
 
-impl HtmlResponseBuilder {
+impl HttpResponseBuilder {
     pub fn new() -> Self {
-        HtmlResponseBuilder {
+        HttpResponseBuilder {
             status_line: None,
             headers: Vec::new(),
             html: None
@@ -82,10 +82,10 @@ impl HtmlResponseBuilder {
         self.html = Some(html);
         self
     }
-    pub fn build(self) -> HtmlResponse {
-        let status = self.status_line.expect("HtmlResponse requires status").to_status_line();
+    pub fn build(self) -> HttpResponse {
+        let status = self.status_line.expect("HTTP Response requires status").to_status_line();
         let status = format!("HTTP/1.1 {}", status);
-        HtmlResponse {
+        HttpResponse {
             status_line: status,
             headers: self.headers,
             html: self.html.unwrap_or("".to_string())

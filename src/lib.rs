@@ -1,3 +1,3 @@
-pub mod reqhandler;
-pub mod htmlres;
-pub mod workerpool;
+pub mod req_handler;
+pub mod worker_pool;
+pub mod http;

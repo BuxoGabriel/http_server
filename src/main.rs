@@ -1,6 +1,6 @@
 use std::net::TcpListener;
 use clap::Parser;
-use http_server::{reqhandler, workerpool::WorkerPool};
+use http_server::{req_handler, worker_pool::WorkerPool};
 
 /// An efficient multi-threaded web server with templating
 #[derive(Parser, Debug)]
@@ -26,7 +26,7 @@ fn main() {
         match stream {
             Ok(stream) => {
                 println!("Connection established!");
-                worker_pool.process(Box::new(|| reqhandler::process(stream)));
+                worker_pool.process(Box::new(|| req_handler::process(stream)));
             }
             Err(e) => {
                 eprintln!("Connection failed: {}", e);
